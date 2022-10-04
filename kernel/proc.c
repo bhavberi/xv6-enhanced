@@ -306,6 +306,9 @@ int fork(void)
   // copy saved user registers.
   *(np->trapframe) = *(p->trapframe);
 
+  // trace bits
+  np->tmask = p->tmask;
+
   // Cause fork to return 0 in the child.
   np->trapframe->a0 = 0;
 
