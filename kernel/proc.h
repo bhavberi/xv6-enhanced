@@ -118,4 +118,5 @@ struct proc
   char name[16];               // Process name (debugging)
 
   uint tmask;
+  uint creation_time;
 };

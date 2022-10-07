@@ -126,6 +126,7 @@ allocproc(void)
 found:
   p->pid = allocpid();
   p->state = USED;
+  p->creation_time = ticks;
 
   // Allocate a trapframe page.
   if ((p->trapframe = (struct trapframe *)kalloc()) == 0)
@@ -149,7 +150,6 @@ found:
   memset(&p->context, 0, sizeof(p->context));
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
-
   return p;
 }
 
@@ -469,6 +469,50 @@ void scheduler(void)
     // Avoid deadlock by ensuring that devices can interrupt.
     intr_on();
 
+#if defined FCFS
+    struct proc *next_process = NULL;
+
+    for (p = proc; p < &proc[NPROC]; p++)
+    {
+      acquire(&p->lock);
+      if (p->state == RUNNABLE)
+      {
+        next_process = p;
+        break;
+      }
+      release(&p->lock);
+    }
+    for (; p < &proc[NPROC]; p++)
+    {
+      acquire(&p->lock);
+      if (p->state == RUNNABLE && next_process->creation_time > p->creation_time)
+      {
+        release(&next_process->lock);
+        next_process = p;
+        continue;
+      }
+      release(&p->lock);
+    }
+    if (next_process != 0)
+    {
+      if (p->state == RUNNABLE)
+      {
+        // Switch to chosen process.  It is the process's job
+        // to release its lock and then reacquire it
+        // before jumping back to us.
+        p->state = RUNNING;
+        c->proc = p;
+        swtch(&c->context, &p->context);
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
+        c->proc = 0;
+      }
+      release(&p->lock);
+    }
+#elif defined LBS
+#elif defined PBS
+#elif defined MLFQ
+#elif defined RR
     for (p = proc; p < &proc[NPROC]; p++)
     {
       acquire(&p->lock);
@@ -487,6 +531,7 @@ void scheduler(void)
       }
       release(&p->lock);
     }
+#endif
   }
 }
 
