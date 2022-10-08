@@ -81,7 +81,7 @@ void usertrap(void)
   // give up the CPU if this is a timer interrupt.
   if (which_dev == 2)
   {
-    if (p->interval != 0)
+    if (p->interval)
     {
       p->now_ticks++;
       if (!p->sigalarm_status && p->interval > 0 && p->now_ticks >= p->interval)
@@ -96,7 +96,11 @@ void usertrap(void)
         p->trapframe->epc = p->handler;
       }
     }
+
+#if defined RR || defined MLFQ || defined LBS
     yield();
+#endif
+
   }
 
   usertrapret();
