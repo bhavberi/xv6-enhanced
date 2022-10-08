@@ -7,6 +7,8 @@
 #include "defs.h"
 #include <stddef.h>
 
+int initial_for_rand = 22;
+
 struct cpu cpus[NCPU];
 
 struct proc proc[NPROC];
@@ -531,7 +533,6 @@ void scheduler(void)
     }
     int random_array[total_processes];
     int j = 0;
-    int next_proc = 0;
     int k = 0;
     for (p = proc; p < &proc[NPROC]; p++)
     {
@@ -542,22 +543,23 @@ void scheduler(void)
         k++;
       }
     }
-    srand(0);
-    int random_number = rand() % (total_tickets + 1);
-    for (int i = 0; i < total_processes; i++)
+    int quotient = (initial_for_rand * 1000) / 7;
+    initial_for_rand = (initial_for_rand * 1000) % 7;
+    int random_number = quotient % (total_tickets + 1);
+    int i = 0;
+    for (p = proc; p < &proc[NPROC]; p++)
     {
       if (random_number > random_array[i] && random_number <= random_array[i + 1])
       {
         next_process = p;
         continue;
       }
-      else
-      {
-        release(&p->lock);
-      }
+      release(&p->lock);
+      i++;
     }
     if (next_process != NULL)
     {
+      // acquire(&next_process->lock);
       if (next_process->state == RUNNABLE)
       {
         // Switch to chosen process.  It is the process's job
@@ -574,6 +576,52 @@ void scheduler(void)
       release(&next_process->lock);
     }
 #elif defined PBS
+    struct proc *next_process = NULL;
+    int total_processes = 0, total_tickets = 0;
+    int array[NPROC];
+    array[0] = 0;
+    for (p = proc; p < &proc[NPROC]; p++)
+    {
+      acquire(&p->lock);
+      if (p->state == RUNNABLE)
+      {
+        total_tickets += p->tickets;
+        array[total_processes] = total_tickets;
+        total_processes++;
+      }
+      release(&p->lock);
+    }
+    for (int i = 0; i < total_tickets; ++i)
+    {
+      next_process = NULL;
+      for (int j = 0; j < total_processes; j++)
+      {
+        if (i > array[j] && i <= array[j + 1])
+        {
+          next_process = p;
+          break;
+        }
+      }
+      if (next_process != NULL)
+      {
+        acquire(&next_process->lock);
+        if (next_process->state == RUNNABLE)
+        {
+          // Switch to chosen process.  It is the process's job
+          // to release its lock and then reacquire it
+          // before jumping back to us.
+          next_process->state = RUNNING;
+          c->proc = next_process;
+          swtch(&c->context, &next_process->context);
+
+          // Process is done running for now.
+          // It should have changed its p->state before coming back.
+          c->proc = 0;
+        }
+        release(&next_process->lock);
+      }
+    }
+
 #elif defined MLFQ
 #elif defined RR
     for (p = proc; p < &proc[NPROC]; p++)
