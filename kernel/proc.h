@@ -120,5 +120,10 @@ struct proc
   uint tmask;
   uint creation_time;
   uint tickets;
-  uint interval_alarm;
+
+  uint64 handler;
+  int interval;                         // to store the value passed by syscall
+  int now_ticks;                     // how many ticks have passed
+  struct trapframe *alarm_trapframe; // cache the trapframe when timer fires
+  int sigalarm_status;
 };

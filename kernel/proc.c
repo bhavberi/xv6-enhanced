@@ -131,6 +131,13 @@ found:
   p->state = USED;
   p->creation_time = ticks;
   p->tickets = 1;
+
+  p->now_ticks = 0;
+  p->sigalarm_status = 0;
+  p->interval = 0;
+  p->handler = 0;
+  p->alarm_trapframe = NULL;
+
   if (p->parent != 0)
   {
     p->tickets = p->parent->tickets;
@@ -143,6 +150,8 @@ found:
     release(&p->lock);
     return 0;
   }
+
+  p->alarm_trapframe = p->trapframe;
 
   // An empty user page table.
   p->pagetable = proc_pagetable(p);
@@ -169,7 +178,11 @@ freeproc(struct proc *p)
 {
   if (p->trapframe)
     kfree((void *)p->trapframe);
+  if (p->alarm_trapframe)
+    kfree((void *)p->alarm_trapframe);
+  
   p->trapframe = 0;
+  p->alarm_trapframe = 0;
   if (p->pagetable)
     proc_freepagetable(p->pagetable, p->sz);
   p->pagetable = 0;
@@ -316,7 +329,6 @@ int fork(void)
 
   // trace bits
   np->tmask = p->tmask;
-  np->interval_alarm = -1;
 
   // Cause fork to return 0 in the child.
   np->trapframe->a0 = 0;

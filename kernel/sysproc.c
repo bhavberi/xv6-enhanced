@@ -112,6 +112,32 @@ int sys_settickets(int number)
 uint64 sys_sigalarm(void)
 {
   int interval;
+  uint64 fn;
   argint(0, &interval);
+  argaddr(1, &fn);
+
+  struct proc *p = myproc();
+
+  p->sigalarm_status = 0;
+  p->interval = interval;
+  p->now_ticks = 0;
+  p->handler = fn;
+
+  return 0;
+}
+
+uint64 sys_sigreturn(void)
+{
+  struct proc *p = myproc();
+
+  // Restore Kernel Values
+  switchTrapFrame(p->alarm_trapframe, p->trapframe);
+  kfree(p->alarm_trapframe);
+
+  p->sigalarm_status = 0;
+  p->alarm_trapframe = 0;
+  p->now_ticks = 0;
+  p->interval = 0;
+  p->handler = 0;
   return 0;
 }
