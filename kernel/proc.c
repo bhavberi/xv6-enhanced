@@ -5,7 +5,7 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
-#include <stdlib.h>
+#include <stddef.h>
 
 struct cpu cpus[NCPU];
 
@@ -314,6 +314,7 @@ int fork(void)
 
   // trace bits
   np->tmask = p->tmask;
+  np->interval_alarm = -1;
 
   // Cause fork to return 0 in the child.
   np->trapframe->a0 = 0;

@@ -119,4 +119,6 @@ struct proc
 
   uint tmask;
   uint creation_time;
+  uint tickets;
+  uint interval_alarm;
 };

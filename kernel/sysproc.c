@@ -107,3 +107,11 @@ int sys_settickets(int number)
   myproc()->tickets = number;
   return 0;
 }
+
+// sigalarm
+uint64 sys_sigalarm(void)
+{
+  int interval;
+  argint(0, &interval);
+  return 0;
+}

@@ -56,9 +56,6 @@ LD = $(TOOLPREFIX)ld
 OBJCOPY = $(TOOLPREFIX)objcopy
 OBJDUMP = $(TOOLPREFIX)objdump
 
-ifndef SCHEDULER
-SCHEDULER := RR
-endif
 
 CFLAGS = -Wall -Werror -O -fno-omit-frame-pointer -ggdb -gdwarf-2
 CFLAGS += -MD
@@ -66,7 +63,21 @@ CFLAGS += -mcmodel=medany
 CFLAGS += -ffreestanding -fno-common -nostdlib -mno-relax
 CFLAGS += -I.
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
-CFLAGS += -D $(SCHEDULER)
+
+SCHEDULER_MACRO = RR
+ifeq ($(SCHEDULER), FCFS)
+    SCHEDULER_MACRO = FCFS
+endif
+ifeq ($(SCHEDULER), LBS)
+    SCHEDULER_MACRO = LBS
+endif
+ifeq ($(SCHEDULER), PBS)
+    SCHEDULER_MACRO = PBS
+endif
+ifeq ($(SCHEDULER), MLFQ)
+    SCHEDULER_MACRO = MLFQ
+endif
+CFLAGS += -D $(SCHEDULER_MACRO)
 
 # Disable PIE when possible (for Ubuntu 16.10 toolchain)
 ifneq ($(shell $(CC) -dumpspecs 2>/dev/null | grep -e '[^f]no-pie'),)
@@ -168,6 +179,7 @@ QEMUOPTS += -drive file=fs.img,if=none,format=raw,id=x0
 QEMUOPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 
 qemu: $K/kernel fs.img
+	@echo SCHEDULER is $(SCHEDULER)
 	$(QEMU) $(QEMUOPTS)
 
 .gdbinit: .gdbinit.tmpl-riscv
