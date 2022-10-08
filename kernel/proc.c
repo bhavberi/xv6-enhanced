@@ -489,7 +489,7 @@ void scheduler(void)
       }
       release(&p->lock);
     }
-    for (; p < &proc[NPROC]; p++)
+    for (p++; p < &proc[NPROC]; p++)
     {
       acquire(&p->lock);
       if (p->state == RUNNABLE && next_process->creation_time > p->creation_time)
