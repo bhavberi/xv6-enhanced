@@ -100,3 +100,10 @@ uint64 sys_trace(void)
   myproc()->tmask = tmask;
   return 0;
 }
+
+// system setticket
+int sys_settickets(int number)
+{
+  myproc()->tickets = number;
+  return 0;
+}

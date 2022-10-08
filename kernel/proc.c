@@ -5,6 +5,7 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+#include <stdlib.h>
 
 struct cpu cpus[NCPU];
 
@@ -127,6 +128,11 @@ found:
   p->pid = allocpid();
   p->state = USED;
   p->creation_time = ticks;
+  p->tickets = 1;
+  if (p->parent != 0)
+  {
+    p->tickets = p->parent->tickets;
+  }
 
   // Allocate a trapframe page.
   if ((p->trapframe = (struct trapframe *)kalloc()) == 0)
@@ -493,6 +499,7 @@ void scheduler(void)
       }
       release(&p->lock);
     }
+    p = next_process;
     if (next_process != 0)
     {
       if (p->state == RUNNABLE)
@@ -510,6 +517,61 @@ void scheduler(void)
       release(&p->lock);
     }
 #elif defined LBS
+    struct proc *next_process = NULL;
+    int total_processes = 0, total_tickets = 0;
+    for (p = proc; p < &proc[NPROC]; p++)
+    {
+      acquire(&p->lock);
+      if (p->state == RUNNABLE)
+      {
+        total_processes++;
+        total_tickets += p->tickets;
+      }
+    }
+    int random_array[total_processes];
+    int j = 0;
+    int next_proc = 0;
+    int k = 0;
+    for (p = proc; p < &proc[NPROC]; p++)
+    {
+      if (p->state == RUNNABLE)
+      {
+        random_array[k] = j;
+        j += p->tickets;
+        k++;
+      }
+    }
+    srand(0);
+    int random_number = rand() % (total_tickets + 1);
+    for (int i = 0; i < total_processes; i++)
+    {
+      if (random_number > random_array[i] && random_number <= random_array[i + 1])
+      {
+        next_process = p;
+        continue;
+      }
+      else
+      {
+        release(&p->lock);
+      }
+    }
+    if (next_process != NULL)
+    {
+      if (next_process->state == RUNNABLE)
+      {
+        // Switch to chosen process.  It is the process's job
+        // to release its lock and then reacquire it
+        // before jumping back to us.
+        next_process->state = RUNNING;
+        c->proc = next_process;
+        swtch(&c->context, &next_process->context);
+
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
+        c->proc = 0;
+      }
+      release(&next_process->lock);
+    }
 #elif defined PBS
 #elif defined MLFQ
 #elif defined RR
