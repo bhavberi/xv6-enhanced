@@ -91,7 +91,7 @@ void usertrap(void)
 
         // Save trapframe
         p->alarm_trapframe = kalloc();
-        switchTrapFrame(p->alarm_trapframe, p->trapframe);
+        memmove(p->alarm_trapframe, p->trapframe, PGSIZE);
 
         p->trapframe->epc = p->handler;
       }
@@ -248,43 +248,4 @@ int devintr()
   {
     return 0;
   }
-}
-
-void switchTrapFrame(struct trapframe *main, struct trapframe *copy)
-{
-  main->kernel_satp = copy->kernel_satp;
-  main->kernel_sp = copy->kernel_sp;
-  main->kernel_hartid = copy->kernel_hartid;
-  main->epc = copy->epc;
-  main->a0 = copy->a0;
-  main->a1 = copy->a1;
-  main->a2 = copy->a2;
-  main->a3 = copy->a3;
-  main->a4 = copy->a4;
-  main->a5 = copy->a5;
-  main->a6 = copy->a6;
-  main->a7 = copy->a7;
-  main->gp = copy->gp;
-  main->ra = copy->ra;
-  main->s0 = copy->s0;
-  main->s1 = copy->s1;
-  main->s2 = copy->s2;
-  main->s3 = copy->s3;
-  main->s4 = copy->s4;
-  main->s5 = copy->s5;
-  main->s6 = copy->s6;
-  main->s7 = copy->s7;
-  main->s8 = copy->s8;
-  main->s9 = copy->s9;
-  main->s10 = copy->s10;
-  main->s11 = copy->s11;
-  main->sp = copy->sp;
-  main->tp = copy->tp;
-  main->t0 = copy->t0;
-  main->t1 = copy->t1;
-  main->t2 = copy->t2;
-  main->t3 = copy->t3;
-  main->t4 = copy->t4;
-  main->t5 = copy->t5;
-  main->t6 = copy->t6;
 }

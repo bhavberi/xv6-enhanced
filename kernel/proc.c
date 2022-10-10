@@ -135,7 +135,7 @@ found:
   p->now_ticks = 0;
   p->sigalarm_status = 0;
   p->interval = 0;
-  p->handler = 0;
+  p->handler = -1;
   p->alarm_trapframe = NULL;
 
   if (p->parent != 0)
@@ -150,8 +150,6 @@ found:
     release(&p->lock);
     return 0;
   }
-
-  p->alarm_trapframe = p->trapframe;
 
   // An empty user page table.
   p->pagetable = proc_pagetable(p);

@@ -131,13 +131,12 @@ uint64 sys_sigreturn(void)
   struct proc *p = myproc();
 
   // Restore Kernel Values
-  switchTrapFrame(p->alarm_trapframe, p->trapframe);
+  memmove(p->trapframe, p->alarm_trapframe, PGSIZE);
   kfree(p->alarm_trapframe);
 
   p->sigalarm_status = 0;
   p->alarm_trapframe = 0;
   p->now_ticks = 0;
-  p->interval = 0;
-  p->handler = 0;
+  usertrapret();
   return 0;
 }
