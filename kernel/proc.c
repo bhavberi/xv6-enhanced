@@ -695,6 +695,9 @@ void scheduler(void)
         uint dynamic_priority = p->static_priority - niceness + 5;
         dynamic_priority = dynamic_priority > 0 ? dynamic_priority : 0;
         dynamic_priority = dynamic_priority < 100 ? dynamic_priority : 100;
+        p->reset_niceness = 0;
+        p->sleeping_ticks = 0;
+        p->running_ticks = 0;
         if (dynamic_priority < min)
         {
           next_process = p;
