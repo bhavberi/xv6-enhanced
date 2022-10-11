@@ -1,0 +1,9 @@
+{
+    "files.associations": {
+        "memory": "c",
+        "semaphore": "c",
+        "stop_token": "c",
+        "condition_variable": "c",
+        "ctime": "c"
+    }
+}

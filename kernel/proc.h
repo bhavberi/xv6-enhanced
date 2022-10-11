@@ -122,7 +122,6 @@ struct proc
   uint etime; // When did the process exited
 
   uint tmask;
-  uint creation_time;
   uint tickets;
   uint number_of_times_scheduled;
   uint static_priority;

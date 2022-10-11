@@ -128,7 +128,6 @@ allocproc(void)
 found:
   p->pid = allocpid();
   p->state = USED;
-  p->creation_time = ticks;
   p->tickets = 1;
   p->static_priority = 60;
   p->number_of_times_scheduled = 0;
@@ -583,7 +582,7 @@ void scheduler(void)
     for (p++; p < &proc[NPROC]; p++)
     {
       acquire(&p->lock);
-      if (p->state == RUNNABLE && next_process->creation_time > p->creation_time)
+      if (p->state == RUNNABLE && next_process->ctime > p->ctime)
       {
         release(&next_process->lock);
         next_process = p;
@@ -594,6 +593,7 @@ void scheduler(void)
     p = next_process;
     if (next_process != 0)
     {
+      // printf("%d ", p->pid);
       if (p->state == RUNNABLE)
       {
         // Switch to chosen process.  It is the process's job
