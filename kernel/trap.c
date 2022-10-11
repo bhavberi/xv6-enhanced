@@ -185,6 +185,7 @@ void clockintr()
 {
   acquire(&tickslock);
   ticks++;
+  update_time();
   if (myproc() != 0)
   {
     myproc()->running_ticks++;

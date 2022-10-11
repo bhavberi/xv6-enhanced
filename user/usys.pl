@@ -39,3 +39,4 @@ entry("uptime");
 entry("trace");
 entry("sigreturn");
 entry("sigalarm"); 
+entry("waitx");
