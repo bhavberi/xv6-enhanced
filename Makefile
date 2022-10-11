@@ -135,6 +135,7 @@ mkfs/mkfs: mkfs/mkfs.c $K/fs.h $K/param.h
 UPROGS=\
 	$U/_alarmtest\
 	$U/_cat\
+	$U/_cowtest\
 	$U/_echo\
 	$U/_forktest\
 	$U/_grep\
