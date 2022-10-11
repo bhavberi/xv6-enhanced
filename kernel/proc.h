@@ -120,6 +120,12 @@ struct proc
   uint tmask;
   uint creation_time;
   uint tickets;
+  uint number_of_times_scheduled;
+  uint static_priority;
+  uint sleep_start;
+  uint reset_niceness;
+  uint sleeping_ticks;
+  uint running_ticks;
 
   uint64 handler;
   int interval;                      // to store the value passed by syscall
@@ -127,3 +133,5 @@ struct proc
   struct trapframe *alarm_trapframe; // cache the trapframe when timer fires
   int sigalarm_status;
 };
+
+int setpriority(int number, int piid);

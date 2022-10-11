@@ -102,8 +102,10 @@ uint64 sys_trace(void)
 }
 
 // system setticket
-int sys_settickets(int number)
+int sys_settickets(void)
 {
+  int number;
+  argint(0, &number);
   myproc()->tickets = number;
   return 0;
 }
@@ -139,4 +141,12 @@ uint64 sys_sigreturn(void)
   p->now_ticks = 0;
   usertrapret();
   return 0;
+}
+
+uint64 sys_setpriority(void)
+{
+  int number, piid;
+  argint(0, &number);
+  argint(1, &piid);
+  return setpriority(number, piid);
 }

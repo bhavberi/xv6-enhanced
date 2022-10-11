@@ -100,7 +100,6 @@ void usertrap(void)
 #if defined RR || defined MLFQ || defined LBS
     yield();
 #endif
-
   }
 
   usertrapret();
@@ -186,6 +185,10 @@ void clockintr()
 {
   acquire(&tickslock);
   ticks++;
+  if (myproc() != 0)
+  {
+    myproc()->running_ticks++;
+  }
   wakeup(&ticks);
   release(&tickslock);
 }
