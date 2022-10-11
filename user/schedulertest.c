@@ -6,34 +6,49 @@
 #define NFORK 10
 #define IO 4
 
-int main() {
-  int n, pid;
-  int wtime, rtime;
-  int twtime=0, trtime=0;
-  for (n=0; n < NFORK;n++) {
-      pid = fork();
-      if (pid < 0)
-          break;
-      if (pid == 0) {
-          if (n < IO) {
-            sleep(200); // IO bound processes
-          } else {
-            for (int i = 0; i < 10000000; i++) {}; // CPU bound process
-          }
-          printf("Process %d finished\n", n);
-          exit(0);
-      } else {
-#ifdef PBS
-        setpriority(60-IO+n, pid); // Will only matter for PBS, set lower priority for IO bound processes 
+int main()
+{
+    int n, pid;
+    int wtime, rtime;
+    int twtime = 0, trtime = 0;
+    for (n = 0; n < NFORK; n++)
+    {
+        pid = fork();
+#if defined LBS
+        settickets(20 * n);
 #endif
-      }
-  }
-  for(;n > 0; n--) {
-      if(waitx(0,&wtime,&rtime) >= 0) {
-          trtime += rtime;
-          twtime += wtime;
-      }
-  }
-  printf("Average rtime %d,  wtime %d\n", trtime / NFORK, twtime / NFORK);
-  exit(0);
+        if (pid < 0)
+            break;
+        if (pid == 0)
+        {
+            if (n < IO)
+            {
+                sleep(200); // IO bound processes
+            }
+            else
+            {
+                for (int i = 0; i < 10000000; i++)
+                {
+                }; // CPU bound process
+            }
+            printf("Process %d finished\n", n);
+            exit(0);
+        }
+        else
+        {
+#ifdef PBS
+            setpriority(60 - IO + n, pid); // Will only matter for PBS, set lower priority for IO bound processes
+#endif
+        }
+    }
+    for (; n > 0; n--)
+    {
+        if (waitx(0, &wtime, &rtime) >= 0)
+        {
+            trtime += rtime;
+            twtime += wtime;
+        }
+    }
+    printf("Average rtime %d,  wtime %d\n", trtime / NFORK, twtime / NFORK);
+    exit(0);
 }

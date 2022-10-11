@@ -123,7 +123,9 @@ int sys_settickets(void)
 {
   int number;
   argint(0, &number);
+  acquire(&(myproc())->lock);
   myproc()->tickets = number;
+  release(&(myproc())->lock);
   return 0;
 }
 

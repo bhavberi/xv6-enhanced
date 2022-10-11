@@ -17,6 +17,8 @@ struct proc *initproc;
 int nextpid = 1;
 struct spinlock pid_lock;
 
+int forked_process = 0;
+
 extern void forkret(void);
 static void freeproc(struct proc *p);
 
@@ -142,9 +144,10 @@ found:
   p->handler = -1;
   p->alarm_trapframe = NULL;
 
-  if (p->parent != 0)
+  if (forked_process && p->parent)
   {
     p->tickets = p->parent->tickets;
+    forked_process = 0;
   }
 
   // Allocate a trapframe page.
@@ -313,6 +316,9 @@ int fork(void)
   int i, pid;
   struct proc *np;
   struct proc *p = myproc();
+
+  if (p->pid > 1)
+    forked_process = 1;
 
   // Allocate process.
   if ((np = allocproc()) == 0)
@@ -570,32 +576,15 @@ void scheduler(void)
     struct proc *next_process = NULL;
 
     for (p = proc; p < &proc[NPROC]; p++)
-    {
-      acquire(&p->lock);
-      if (p->state == RUNNABLE)
-      {
+      if (p->state == RUNNABLE && (!next_process || next_process->ctime > p->ctime))
         next_process = p;
-        break;
-      }
-      release(&p->lock);
-    }
-    for (p++; p < &proc[NPROC]; p++)
-    {
-      acquire(&p->lock);
-      if (p->state == RUNNABLE && next_process->ctime > p->ctime)
-      {
-        release(&next_process->lock);
-        next_process = p;
-        continue;
-      }
-      release(&p->lock);
-    }
+
     p = next_process;
-    if (next_process != 0)
+    if (p != 0)
     {
-      // printf("%d ", p->pid);
       if (p->state == RUNNABLE)
       {
+        acquire(&p->lock);
         // Switch to chosen process.  It is the process's job
         // to release its lock and then reacquire it
         // before jumping back to us.
@@ -605,31 +594,22 @@ void scheduler(void)
         // Process is done running for now.
         // It should have changed its p->state before coming back.
         c->proc = 0;
+        release(&p->lock);
       }
-      release(&p->lock);
     }
 #elif defined LBS
     struct proc *next_process = 0;
     int total_processes = 0, total_tickets = 0;
+    int random_array[NPROC];
+    random_array[0] = 0;
+    
     for (p = proc; p < &proc[NPROC]; p++)
     {
-      acquire(&p->lock);
       if (p->state == RUNNABLE)
       {
-        total_processes++;
         total_tickets += p->tickets;
-      }
-    }
-    int random_array[total_processes + 1];
-    int j = 0;
-    int k = 0;
-    for (p = proc; p < &proc[NPROC]; p++)
-    {
-      if (p->state == RUNNABLE)
-      {
-        random_array[k] = j;
-        j += p->tickets;
-        k++;
+        random_array[total_processes] = total_tickets;
+        total_processes++;
       }
     }
     random_array[total_processes] = total_tickets + 1;
@@ -637,6 +617,8 @@ void scheduler(void)
     int i = 0;
     for (p = proc; p < &proc[NPROC]; p++)
     {
+      if (total_processes > 1)
+        printf("%d-%d ", random_number, total_tickets);
       if (random_number >= random_array[i] && random_number < random_array[i + 1])
       {
         next_process = p;
@@ -644,19 +626,15 @@ void scheduler(void)
       }
       i++;
     }
-    for (p = proc; p < &proc[NPROC]; p++)
-    {
-      if (p != next_process)
-      {
-        release(&p->lock);
-      }
-    }
-    p = next_process;
+    if(total_processes==0)
+      next_process = 0;
+    
     if (next_process != 0)
     {
-      // acquire(&next_process->lock);
+      // printf("%d-%d ", random_number, total_tickets);
       if (next_process->state == RUNNABLE)
       {
+        acquire(&next_process->lock);
         // Switch to chosen process.  It is the process's job
         // to release its lock and then reacquire it
         // before jumping back to us.
@@ -667,8 +645,8 @@ void scheduler(void)
         // Process is done running for now.
         // It should have changed its p->state before coming back.
         c->proc = 0;
+        release(&next_process->lock);
       }
-      release(&next_process->lock);
     }
 #elif defined PBS
     struct proc *next_process = 0;
