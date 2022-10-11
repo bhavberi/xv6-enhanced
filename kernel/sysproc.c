@@ -167,5 +167,6 @@ uint64 sys_setpriority(void)
   int number, piid;
   argint(0, &number);
   argint(1, &piid);
-  return setpriority(number, piid);
+  setpriority(number, piid);
+  return 0;
 }
