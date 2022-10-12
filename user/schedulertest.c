@@ -15,7 +15,7 @@ int main()
     {
         pid = fork();
 #if defined LBS
-        settickets(20 * n);
+        settickets(2 * n + 10);
 #endif
         if (pid < 0)
             break;
@@ -27,7 +27,7 @@ int main()
             }
             else
             {
-                for (int i = 0; i < 10000000; i++)
+                for (uint64 i = 0; i < n * 1000000000; i++)
                 {
                 }; // CPU bound process
             }
