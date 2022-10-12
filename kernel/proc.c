@@ -696,7 +696,7 @@ void scheduler(void)
         }
         else
         {
-          niceness = int(p->sleeping_ticks / (p->sleeping_ticks + p->running_ticks)) * 10;
+          niceness = (p->sleeping_ticks / (p->sleeping_ticks + p->running_ticks)) * 10;
         }
         uint dynamic_priority = p->static_priority - niceness + 5;
         dynamic_priority = dynamic_priority > 0 ? dynamic_priority : 0;
@@ -717,7 +717,7 @@ void scheduler(void)
           }
           else if (p->number_of_times_scheduled == next_process->number_of_times_scheduled)
           {
-            if (p->creation_time < next_process->creation_time)
+            if (p->ctime < next_process->ctime)
             {
               next_process = p;
             }
@@ -733,9 +733,9 @@ void scheduler(void)
       }
     }
     p = next_process;
-    p->number_of_times_scheduled++;
     if (next_process != 0)
     {
+      p->number_of_times_scheduled++;
       if (p->state == RUNNABLE)
       {
         // Switch to chosen process.  It is the process's job
@@ -748,8 +748,8 @@ void scheduler(void)
         // Process is done running for now.
         // It should have changed its p->state before coming back.
         c->proc = 0;
+        release(&p->lock);
       }
-      release(&p->lock);
     }
 
 #elif defined MLFQ
@@ -1066,8 +1066,9 @@ int setpriority(int number, int piid)
       p->reset_niceness = 1;
       if (p->static_priority < original)
       {
-        yield(); // need to call the scheduler again.
+        // implement here
       }
+      release(&p->lock);
       break;
     }
     release(&p->lock);
