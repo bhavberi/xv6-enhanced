@@ -96,11 +96,21 @@ void usertrap(void)
         p->trapframe->epc = p->handler;
       }
     }
-
-#if defined RR || defined MLFQ || defined LBS
+#ifdef MLFQ
+    struct proc *p = myproc();
+    if (p->change_queue <= 0)
+    {
+      if (p->level + 1 != NMLFQ)
+      {
+        p->level++;
+        p->enter_ticks = ticks;
+      }
+      yield();
+    }
+#endif
+#if defined RR || defined LBS
     yield();
 #endif
-
   }
 
   usertrapret();
@@ -186,6 +196,13 @@ void clockintr()
 {
   acquire(&tickslock);
   ticks++;
+  update_time();
+  if (myproc() != 0)
+  {
+    myproc()->running_ticks++;
+    myproc()->q[myproc()->level]++;
+    myproc()->change_queue--;
+  }
   wakeup(&ticks);
   release(&tickslock);
 }

@@ -5,9 +5,8 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+#include "rand.h"
 #include <stddef.h>
-
-int initial_for_rand = 22;
 
 struct cpu cpus[NCPU];
 
@@ -17,6 +16,8 @@ struct proc *initproc;
 
 int nextpid = 1;
 struct spinlock pid_lock;
+
+int forked_process = 0;
 
 extern void forkret(void);
 static void freeproc(struct proc *p);
@@ -129,8 +130,23 @@ allocproc(void)
 found:
   p->pid = allocpid();
   p->state = USED;
-  p->creation_time = ticks;
   p->tickets = 1;
+  p->static_priority = 60;
+  p->number_of_times_scheduled = 0;
+  p->sleeping_ticks = 0;
+  p->running_ticks = 0;
+  p->sleep_start = 0;
+  p->reset_niceness = 1;
+  p->level = 0;
+  p->change_queue = 1 << p->level;
+  p->in_queue = 0;
+  p->enter_ticks = ticks;
+  p->n_run = 0;
+
+  for (int i = 0; i < NMLFQ; i++)
+  {
+    p->q[i] = 0;
+  }
 
   p->now_ticks = 0;
   p->sigalarm_status = 0;
@@ -138,9 +154,10 @@ found:
   p->handler = -1;
   p->alarm_trapframe = NULL;
 
-  if (p->parent != 0)
+  if (forked_process && p->parent)
   {
     p->tickets = p->parent->tickets;
+    forked_process = 0;
   }
 
   // Allocate a trapframe page.
@@ -165,6 +182,9 @@ found:
   memset(&p->context, 0, sizeof(p->context));
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
+  p->rtime = 0;
+  p->etime = 0;
+  p->ctime = ticks;
   return p;
 }
 
@@ -178,7 +198,7 @@ freeproc(struct proc *p)
     kfree((void *)p->trapframe);
   if (p->alarm_trapframe)
     kfree((void *)p->alarm_trapframe);
-  
+
   p->trapframe = 0;
   p->alarm_trapframe = 0;
   if (p->pagetable)
@@ -307,6 +327,9 @@ int fork(void)
   struct proc *np;
   struct proc *p = myproc();
 
+  if (p->pid > 1)
+    forked_process = 1;
+
   // Allocate process.
   if ((np = allocproc()) == 0)
   {
@@ -408,6 +431,7 @@ void exit(int status)
 
   p->xstate = status;
   p->state = ZOMBIE;
+  p->etime = ticks;
 
   release(&wait_lock);
 
@@ -470,6 +494,76 @@ int wait(uint64 addr)
   }
 }
 
+// Wait for a child process to exit and return its pid.
+// Return -1 if this process has no children.
+int waitx(uint64 addr, uint *wtime, uint *rtime)
+{
+  struct proc *np;
+  int havekids, pid;
+  struct proc *p = myproc();
+
+  acquire(&wait_lock);
+
+  for (;;)
+  {
+    // Scan through table looking for exited children.
+    havekids = 0;
+    for (np = proc; np < &proc[NPROC]; np++)
+    {
+      if (np->parent == p)
+      {
+        // make sure the child isn't still in exit() or swtch().
+        acquire(&np->lock);
+
+        havekids = 1;
+        if (np->state == ZOMBIE)
+        {
+          // Found one.
+          pid = np->pid;
+          *rtime = np->rtime;
+          *wtime = np->etime - np->ctime - np->rtime;
+          if (addr != 0 && copyout(p->pagetable, addr, (char *)&np->xstate,
+                                   sizeof(np->xstate)) < 0)
+          {
+            release(&np->lock);
+            release(&wait_lock);
+            return -1;
+          }
+          freeproc(np);
+          release(&np->lock);
+          release(&wait_lock);
+          return pid;
+        }
+        release(&np->lock);
+      }
+    }
+
+    // No point waiting if we don't have any children.
+    if (!havekids || p->killed)
+    {
+      release(&wait_lock);
+      return -1;
+    }
+
+    // Wait for a child to exit.
+    sleep(p, &wait_lock); // DOC: wait-sleep
+  }
+}
+
+void update_time()
+{
+  struct proc *p;
+  for (p = proc; p < &proc[NPROC]; p++)
+  {
+    acquire(&p->lock);
+    if (p->state == RUNNING)
+    {
+      p->rtime++;
+    }
+    release(&p->lock);
+  }
+}
+
 // Per-CPU process scheduler.
 // Each CPU calls scheduler() after setting itself up.
 // Scheduler never returns.  It loops, doing:
@@ -504,7 +598,7 @@ void scheduler(void)
     for (p++; p < &proc[NPROC]; p++)
     {
       acquire(&p->lock);
-      if (p->state == RUNNABLE && next_process->creation_time > p->creation_time)
+      if (p->state == RUNNABLE && next_process->ctime > p->ctime)
       {
         release(&next_process->lock);
         next_process = p;
@@ -515,8 +609,10 @@ void scheduler(void)
     p = next_process;
     if (next_process != 0)
     {
+      // printf("%d ", p->pid);
       if (p->state == RUNNABLE)
       {
+        // printf("%d\n", p->pid);
         // Switch to chosen process.  It is the process's job
         // to release its lock and then reacquire it
         // before jumping back to us.
@@ -530,48 +626,43 @@ void scheduler(void)
       release(&p->lock);
     }
 #elif defined LBS
-    struct proc *next_process = NULL;
+    struct proc *next_process = 0;
     int total_processes = 0, total_tickets = 0;
+    int random_array[NPROC];
+    random_array[0] = 0;
+
     for (p = proc; p < &proc[NPROC]; p++)
     {
-      acquire(&p->lock);
       if (p->state == RUNNABLE)
       {
-        total_processes++;
+        random_array[total_processes] = total_tickets;
         total_tickets += p->tickets;
+        total_processes++;
       }
     }
-    int random_array[total_processes];
-    int j = 0;
-    int k = 0;
-    for (p = proc; p < &proc[NPROC]; p++)
-    {
-      if (p->state == RUNNABLE)
-      {
-        random_array[k] = j;
-        j += p->tickets;
-        k++;
-      }
-    }
-    int quotient = (initial_for_rand * 1000) / 7;
-    initial_for_rand = (initial_for_rand * 1000) % 7;
-    int random_number = quotient % (total_tickets + 1);
+    random_array[total_processes] = total_tickets + 1;
+    int random_number = random_at_most(total_tickets);
     int i = 0;
     for (p = proc; p < &proc[NPROC]; p++)
     {
-      if (random_number > random_array[i] && random_number <= random_array[i + 1])
+      if (p->state != RUNNABLE)
+        continue;
+      if (random_number >= random_array[i] && random_number < random_array[i + 1])
       {
         next_process = p;
-        continue;
+        break;
       }
-      release(&p->lock);
       i++;
     }
-    if (next_process != NULL)
+    if (total_processes == 0)
+      next_process = 0;
+
+    if (next_process != 0)
     {
-      // acquire(&next_process->lock);
+      // printf("%d-%d ", random_number, total_tickets);
       if (next_process->state == RUNNABLE)
       {
+        acquire(&next_process->lock);
         // Switch to chosen process.  It is the process's job
         // to release its lock and then reacquire it
         // before jumping back to us.
@@ -582,63 +673,155 @@ void scheduler(void)
         // Process is done running for now.
         // It should have changed its p->state before coming back.
         c->proc = 0;
+        release(&next_process->lock);
       }
-      release(&next_process->lock);
     }
 #elif defined PBS
-    struct proc *next_process = NULL;
-    int total_processes = 0, total_tickets = 0;
-    int array[NPROC];
-    array[0] = 0;
+    struct proc *next_process = 0;
+    uint min = 1000;
     for (p = proc; p < &proc[NPROC]; p++)
     {
       acquire(&p->lock);
       if (p->state == RUNNABLE)
       {
-        total_tickets += p->tickets;
-        array[total_processes] = total_tickets;
-        total_processes++;
+        if (next_process == 0)
+        {
+          next_process = p;
+          continue;
+        }
+        uint niceness;
+        if (p->reset_niceness == 1)
+        {
+          niceness = 5;
+        }
+        else
+        {
+          niceness = int(p->sleeping_ticks / (p->sleeping_ticks + p->running_ticks)) * 10;
+        }
+        uint dynamic_priority = p->static_priority - niceness + 5;
+        dynamic_priority = dynamic_priority > 0 ? dynamic_priority : 0;
+        dynamic_priority = dynamic_priority < 100 ? dynamic_priority : 100;
+        p->reset_niceness = 0;
+        p->sleeping_ticks = 0;
+        p->running_ticks = 0;
+        if (dynamic_priority < min)
+        {
+          next_process = p;
+          min = dynamic_priority;
+        }
+        else if (dynamic_priority == min)
+        {
+          if (p->number_of_times_scheduled < next_process->number_of_times_scheduled)
+          {
+            next_process = p;
+          }
+          else if (p->number_of_times_scheduled == next_process->number_of_times_scheduled)
+          {
+            if (p->creation_time < next_process->creation_time)
+            {
+              next_process = p;
+            }
+          }
+        }
+      }
+    }
+    for (p = proc; p < &proc[NPROC]; p++)
+    {
+      if (p != next_process)
+      {
+        release(&p->lock);
+      }
+    }
+    p = next_process;
+    p->number_of_times_scheduled++;
+    if (next_process != 0)
+    {
+      if (p->state == RUNNABLE)
+      {
+        // Switch to chosen process.  It is the process's job
+        // to release its lock and then reacquire it
+        // before jumping back to us.
+        p->state = RUNNING;
+        c->proc = p;
+        swtch(&c->context, &p->context);
+
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
+        c->proc = 0;
       }
       release(&p->lock);
     }
-    for (int i = 0; i < total_tickets; ++i)
-    {
-      next_process = NULL;
-      for (int j = 0; j < total_processes; j++)
-      {
-        if (i > array[j] && i <= array[j + 1])
-        {
-          next_process = p;
-          break;
-        }
-      }
-      if (next_process != NULL)
-      {
-        acquire(&next_process->lock);
-        if (next_process->state == RUNNABLE)
-        {
-          // Switch to chosen process.  It is the process's job
-          // to release its lock and then reacquire it
-          // before jumping back to us.
-          next_process->state = RUNNING;
-          c->proc = next_process;
-          swtch(&c->context, &next_process->context);
-
-          // Process is done running for now.
-          // It should have changed its p->state before coming back.
-          c->proc = 0;
-        }
-        release(&next_process->lock);
-      }
-    }
 
 #elif defined MLFQ
+    // for (struct proc *p = proc; p < &proc[NPROC]; p++)
+    // {
+    //   if (p->state == RUNNABLE && ticks - p->enter_ticks >= AGETICK)
+    //   {
+    //     if (p->in_queue)
+    //     {
+    //       // qerase(&mlfq[p->level], p->pid);
+    //     }
+    //     if (p->level != 0)
+    //     {
+    //       p->level--;
+    //     }
+    //     p->enter_ticks = ticks;
+    //   }
+    // }
+    // for (p = proc; p < &proc[NPROC]; p++)
+    // {
+    //   if (p->state == RUNNABLE && p->in_queue == 0)
+    //   {
+    //     deque *x = &mlfq[p->level];
+    //     pushback(&x, p);
+    //     p->in_queue = 1;
+    //   }
+    // }
+    // int flag = 0;
+    // for (int level = 0; level < NMLFQ; level++)
+    // {
+    //   while (size(&mlfq[level]))
+    //   {
+    //     p = front(&mlfq[level]);
+    //     deque *x = &mlfq[p->level];
+    //     popfront(&x);
+    //     p->in_queue = 0;
+    //     if (p->state == RUNNABLE)
+    //     {
+    //       p->enter_ticks = ticks;
+    //       flag = 1;
+    //       break;
+    //     }
+    //   }
+    //   if (flag == 1)
+    //   {
+    //     break;
+    //   }
+    // }
+    // if (p->state == RUNNABLE)
+    // {
+    //   // Switch to chosen process.  It is the process's job
+    //   // to release its lock and then reacquire it
+    //   // before jumping back to us.
+    //   p->change_queue = 1 << p->level;
+
+    //   p->state = RUNNING;
+    //   p->enter_ticks = ticks;
+    //   p->n_run++;
+    //   c->proc = p;
+    //   swtch(&c->context, &p->context);
+
+    //   // Process is done running for now.
+    //   // It should have changed its p->state before coming back.
+    //   c->proc = 0;
+    // }
 #elif defined RR
     for (p = proc; p < &proc[NPROC]; p++)
     {
       acquire(&p->lock);
       if (p->state == RUNNABLE)
       {
+        // printf("%d\n", p->pid);
         // Switch to chosen process.  It is the process's job
         // to release its lock and then reacquire it
         // before jumping back to us.
@@ -730,6 +913,7 @@ void sleep(void *chan, struct spinlock *lk)
   release(lk);
 
   // Go to sleep.
+  p->sleep_start = ticks;
   p->chan = chan;
   p->state = SLEEPING;
 
@@ -756,6 +940,7 @@ void wakeup(void *chan)
       acquire(&p->lock);
       if (p->state == SLEEPING && p->chan == chan)
       {
+        p->sleeping_ticks += (ticks - p->sleep_start);
         p->state = RUNNABLE;
       }
       release(&p->lock);
@@ -867,4 +1052,25 @@ void procdump(void)
     printf("%d %s %s", p->pid, state, p->name);
     printf("\n");
   }
+}
+int setpriority(int number, int piid)
+{
+  uint original = 0;
+  for (struct proc *p = proc; p < &proc[NPROC]; p++)
+  {
+    acquire(&p->lock);
+    if (p->pid == piid)
+    {
+      original = p->static_priority;
+      p->static_priority = number;
+      p->reset_niceness = 1;
+      if (p->static_priority < original)
+      {
+        yield(); // need to call the scheduler again.
+      }
+      break;
+    }
+    release(&p->lock);
+  }
+  return original;
 }

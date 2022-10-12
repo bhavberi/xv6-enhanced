@@ -79,6 +79,7 @@ int argstr(int n, char *buf, int max)
 extern uint64 sys_fork(void);
 extern uint64 sys_exit(void);
 extern uint64 sys_wait(void);
+extern uint64 sys_waitx(void);
 extern uint64 sys_pipe(void);
 extern uint64 sys_read(void);
 extern uint64 sys_kill(void);
@@ -101,6 +102,7 @@ extern uint64 sys_trace(void);
 extern uint64 sys_settickets(void);
 extern uint64 sys_sigalarm(void);
 extern uint64 sys_sigreturn(void);
+extern uint64 sys_setpriority(void);
 
 // An array mapping syscall numbers from syscall.h
 // to the function that handles the system call.
@@ -130,6 +132,8 @@ static uint64 (*syscalls[])(void) = {
     [SYS_settickets] sys_settickets,
     [SYS_sigalarm] sys_sigalarm,
     [SYS_sigreturn] sys_sigreturn,
+    [SYS_waitx] sys_waitx,
+    [SYS_setpriority] sys_setpriority,
 };
 
 char *syscall_name[] = {
@@ -159,6 +163,8 @@ char *syscall_name[] = {
     "settickets",
     "sigalarm",
     "sigreturn",
+    "waitx",
+    "setpriority",
 };
 
 void syscall(void)
@@ -173,9 +179,9 @@ void syscall(void)
     // and store its return value in p->trapframe->a0
 
     int arg0 = p->trapframe->a0;
-    short argcount = (num == SYS_read || num == SYS_write || num == SYS_mknod)     ? 3 
-    : ((num == SYS_exec || num == SYS_fstat || num == SYS_open || num == SYS_link || num == SYS_sigalarm) ? 2 
-    : ((num == SYS_wait || num == SYS_pipe || num == SYS_kill || num == SYS_chdir || num == SYS_dup || num == SYS_sbrk || num == SYS_sleep || num == SYS_unlink || num == SYS_mkdir || num == SYS_close || num == SYS_trace || num == SYS_settickets) ? 1 
+    short argcount = (num == SYS_read || num == SYS_write || num == SYS_mknod || SYS_waitx) ? 3
+    : ((num == SYS_exec || num == SYS_fstat || num == SYS_open || num == SYS_link || num == SYS_sigalarm || num == SYS_setpriority) ? 2
+    : ((num == SYS_wait || num == SYS_pipe || num == SYS_kill || num == SYS_chdir || num == SYS_dup || num == SYS_sbrk || num == SYS_sleep || num == SYS_unlink || num == SYS_mkdir || num == SYS_close || num == SYS_trace || num == SYS_settickets) ? 1
     : 0));
 
     p->trapframe->a0 = syscalls[num]();

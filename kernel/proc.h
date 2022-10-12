@@ -1,3 +1,5 @@
+#ifndef __proc
+#define __proc
 // Saved registers for kernel context switches.
 struct context
 {
@@ -117,9 +119,24 @@ struct proc
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
 
+  uint rtime; // How long the process ran for
+  uint ctime; // When was the process created
+  uint etime; // When did the process exited
+
   uint tmask;
-  uint creation_time;
   uint tickets;
+  uint number_of_times_scheduled;
+  uint static_priority;
+  uint sleep_start;
+  uint reset_niceness;
+  uint sleeping_ticks;
+  uint running_ticks;
+  uint level;
+  uint in_queue;
+  uint change_queue;
+  uint n_run;
+  uint enter_ticks;
+  uint q[NMLFQ];
 
   uint64 handler;
   int interval;                      // to store the value passed by syscall
@@ -127,3 +144,22 @@ struct proc
   struct trapframe *alarm_trapframe; // cache the trapframe when timer fires
   int sigalarm_status;
 };
+
+int setpriority(int number, int piid);
+
+// typedef struct deque_
+// {
+//   struct proc *n;
+//   struct deque_ *next;
+//   struct deque_ *last;
+// } deque;
+// void popfront(deque **a);
+// void popback(deque **a);
+// void pushfront(deque **a, struct proc *x);
+// void pushback(deque **a, struct proc *x);
+// struct proc *front(deque *a);
+// struct proc *back(deque *a);
+// int isempty(deque *a);
+// int size(deque *a);
+// deque mlfq[NMLFQ];
+#endif

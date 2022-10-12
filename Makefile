@@ -29,6 +29,7 @@ OBJS = \
   $K/kernelvec.o \
   $K/plic.o \
   $K/rand.o \
+  $K/queue.o \
   $K/virtio_disk.o
 
 # riscv64-unknown-elf- or riscv64-linux-gnu-
@@ -65,20 +66,9 @@ CFLAGS += -ffreestanding -fno-common -nostdlib -mno-relax
 CFLAGS += -I.
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 
-SCHEDULER_MACRO = RR
-ifeq ($(SCHEDULER), FCFS)
-    SCHEDULER_MACRO = FCFS
+ifndef SCHEDULER
+SCHEDULER := RR
 endif
-ifeq ($(SCHEDULER), LBS)
-    SCHEDULER_MACRO = LBS
-endif
-ifeq ($(SCHEDULER), PBS)
-    SCHEDULER_MACRO = PBS
-endif
-ifeq ($(SCHEDULER), MLFQ)
-    SCHEDULER_MACRO = MLFQ
-endif
-CFLAGS += -D $(SCHEDULER_MACRO)
 
 # Disable PIE when possible (for Ubuntu 16.10 toolchain)
 ifneq ($(shell $(CC) -dumpspecs 2>/dev/null | grep -e '[^f]no-pie'),)
@@ -89,6 +79,7 @@ CFLAGS += -fno-pie -nopie
 endif
 
 LDFLAGS = -z max-page-size=4096
+CFLAGS += -D $(SCHEDULER)
 
 $K/kernel: $(OBJS) $K/kernel.ld $U/initcode
 	$(LD) $(LDFLAGS) -T $K/kernel.ld -o $K/kernel $(OBJS) 
@@ -135,6 +126,7 @@ mkfs/mkfs: mkfs/mkfs.c $K/fs.h $K/param.h
 UPROGS=\
 	$U/_alarmtest\
 	$U/_cat\
+	$U/_cowtest\
 	$U/_echo\
 	$U/_forktest\
 	$U/_grep\
@@ -144,9 +136,12 @@ UPROGS=\
 	$U/_ls\
 	$U/_mkdir\
 	$U/_rm\
+	$U/_schedulertest\
+	$U/_setpriority\
 	$U/_sh\
 	$U/_strace\
 	$U/_stressfs\
+	$U/_time\
 	$U/_usertests\
 	$U/_grind\
 	$U/_wc\
@@ -158,7 +153,7 @@ fs.img: mkfs/mkfs README $(UPROGS)
 -include kernel/*.d user/*.d
 
 clean: 
-	rm -f *.tex *.dvi *.idx *.aux *.log *.ind *.ilg \
+	@rm -f *.tex *.dvi *.idx *.aux *.log *.ind *.ilg \
 	*/*.o */*.d */*.asm */*.sym \
 	$U/initcode $U/initcode.out $K/kernel fs.img \
 	mkfs/mkfs .gdbinit \
@@ -181,7 +176,7 @@ QEMUOPTS += -drive file=fs.img,if=none,format=raw,id=x0
 QEMUOPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 
 qemu: $K/kernel fs.img
-	$(QEMU) $(QEMUOPTS)
+	@$(QEMU) $(QEMUOPTS)
 
 .gdbinit: .gdbinit.tmpl-riscv
 	sed "s/:1234/:$(GDBPORT)/" < $^ > $@
