@@ -103,7 +103,6 @@ void usertrap(void)
       if (p->level + 1 != NMLFQ)
       {
         p->level++;
-        p->enter_ticks = ticks;
       }
       yield();
     }
@@ -200,7 +199,6 @@ void clockintr()
   if (myproc() != 0)
   {
     myproc()->running_ticks++;
-    myproc()->q[myproc()->level]++;
     myproc()->change_queue--;
   }
   wakeup(&ticks);

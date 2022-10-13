@@ -134,9 +134,7 @@ struct proc
   uint level;
   uint in_queue;
   uint change_queue;
-  uint n_run;
   uint enter_ticks;
-  uint q[NMLFQ];
 
   uint64 handler;
   int interval;                      // to store the value passed by syscall
@@ -147,19 +145,14 @@ struct proc
 
 int setpriority(int number, int piid);
 
-// typedef struct deque_
-// {
-//   struct proc *n;
-//   struct deque_ *next;
-//   struct deque_ *last;
-// } deque;
-// void popfront(deque **a);
-// void popback(deque **a);
-// void pushfront(deque **a, struct proc *x);
-// void pushback(deque **a, struct proc *x);
-// struct proc *front(deque *a);
-// struct proc *back(deque *a);
-// int isempty(deque *a);
-// int size(deque *a);
-// deque mlfq[NMLFQ];
+typedef struct deque_
+{
+  struct proc *n[NPROC];
+  uint end;
+} deque;
+void popfront(deque *a);
+void pushback(deque *a, struct proc *x);
+struct proc *front(deque *a);
+int size(deque *a);
+void delete (deque *a, uint pid);
 #endif
