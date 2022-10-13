@@ -1049,7 +1049,7 @@ void procdump(void)
       state = states[p->state];
     else
       state = "???";
-    printf("%d %s %s", p->pid, state, p->name);
+    printf("%d %s %s ctime=%d tickets=%d static_prior=%d", p->pid, state, p->name, p->ctime, p->tickets,p->static_priority);
     printf("\n");
   }
 }
@@ -1064,11 +1064,12 @@ int setpriority(int number, int piid)
       original = p->static_priority;
       p->static_priority = number;
       p->reset_niceness = 1;
+      release(&p->lock);
       if (p->static_priority < original)
       {
-        // implement here
+        // printf("%d %d %d\n", p->pid, p->static_priority, original);
+        yield();
       }
-      release(&p->lock);
       break;
     }
     release(&p->lock);

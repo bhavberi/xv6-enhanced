@@ -20,6 +20,10 @@ int main()
 #if defined LBS
         settickets(2 * n + 10);
 #endif
+#ifdef PBS
+        if (pid != 0)
+            setpriority(60 - IO + n, pid); // Will only matter for PBS, set lower priority for IO bound processes
+#endif
         if (pid < 0)
             break;
         if (pid == 0)
@@ -45,7 +49,7 @@ int main()
 #ifdef PBS
             setpriority(60 - IO + n, pid); // Will only matter for PBS, set lower priority for IO bound processes
 #endif
-        }
+        };
     }
     for (; n > 0; n--)
     {
