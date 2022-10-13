@@ -13,6 +13,9 @@ int main()
     int twtime = 0, trtime = 0;
     for (n = 0; n < NFORK; n++)
     {
+        for (int j = 0; j < 100000000; ++j)
+        {
+        };
         pid = fork();
 #if defined LBS
         settickets(2 * n + 10);
@@ -23,6 +26,9 @@ int main()
         {
             if (n < IO)
             {
+                for (uint64 i = 0; i < 10; i++)
+                {
+                };
                 sleep(200); // IO bound processes
             }
             else
