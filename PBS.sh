@@ -1,3 +1,3 @@
 #!/bin/bash
 make clean
-make qemu SCHEDULER=PBS CPUS="${1:-3/}"
+make qemu SCHEDULER=PBS

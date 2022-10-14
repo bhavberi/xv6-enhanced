@@ -8,6 +8,8 @@
 
 This assignment was developed and tested in - Ansi C Language.
 
+----
+
 ## First Come First Serve (FCFS)
 
 -   We need to store the creation time of every process so, we add the ctime variable to the struct proc.
@@ -43,24 +45,34 @@ This assignment was developed and tested in - Ansi C Language.
 -   Also, we add 2 parameters to param.c i.e. number of queues which is 5 in our case and ageing time which is 30 ticks in our case.
 -   Also, for implementing the queue, we make a new struct and define it in the proc.h itself. We implement all the commands of the queue like popfront, pushback, front, size and delete in a new file named queue.c.
 
+----
+
 ## Observation
 
-## Round Robin (RR)
+## Round Robin (RR) `[CPUS=2]`
 
-![alt text](images/RR.png)
+![RR - schedulertest](images/RR.png) ![RR - schedulertest1](images/RR1.jpeg)
 
-## First Come First Serve (FCFS)
+## First Come First Serve (FCFS) `[CPUS=2]`
 
-![alt text](images/FCFS.png)
+![FCFS - schedulertest](images/FCFS.png) ![FCFS - schedulertest1](images/FCFS1.jpeg)
 
-## Lotery Based Scheduling (LBS)
+## Lotery Based Scheduling (LBS) `[CPUS=2]`
 
-![alt text](images/LBS.png)
+![LBS - schedulertest](images/LBS.png) ![LBS - schedulertest1](images/LBS1.jpeg)
 
-## Priority Based Scheduling (PBS)
+## Priority Based Scheduling (PBS) `[CPUS=2]`
 
-![alt text](images/PBS.png)
+![PBS - schedulertest](images/PBS.png) ![PBS - schedulertest1](images/PBS1.jpeg)
 
-## Multi Level Feedback Queue (MLFQ)
+## Multi Level Feedback Queue (MLFQ) `[CPUS=1]`
 
-![alt text](images/MLFQ.png)
+![MLFQ - schedulertest](images/MLFQ.png) ![MLFQ - schedulertest1](images/MLFQ1.jpeg)
+-----
+
+## Scheduling Analysis
+
+![schedulertest](graph/schedulertest.png) ![schedulertest1](graph/schedulertest1.png)
+
+### Overall Comparison -> `FCFS ~ PBS > LBS > RR > MLFQ`
+---
