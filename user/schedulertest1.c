@@ -4,7 +4,7 @@
 #include "kernel/fcntl.h"
 
 #define NFORK 10
-#define IO 5
+#define IO 4
 
 int main()
 {
@@ -13,26 +13,38 @@ int main()
     int twtime = 0, trtime = 0;
     for (n = 0; n < NFORK; n++)
     {
+        for (int j = 0; j < 100000000; ++j)
+        {
+        };
         pid = fork();
+#if defined LBS
+        settickets(2 * n + 10);
+#endif
+#ifdef PBS
+        if (pid != 0)
+            setpriority(60 - IO + n, pid); // Will only matter for PBS, set lower priority for IO bound processes
+#endif
         if (pid < 0)
+        {
+            printf("ERR %d\n", n);
             break;
+        }
         if (pid == 0)
         {
-#ifndef FCFS
             if (n < IO)
             {
+                for (uint64 i = 0; i < 10; i++)
+                {
+                };
                 sleep(200); // IO bound processes
             }
             else
             {
-#endif
-                for (volatile int i = 0; i < 1000000000; i++)
+                for (uint64 i = 0; i < n * 1000000000; i++)
                 {
-                } // CPU bound process
-#ifndef FCFS
+                }; // CPU bound process
             }
-#endif
-            printf("\nProcess %d finished", n);
+            printf("Process %d finished\n", n);
             exit(0);
         }
         else
@@ -40,11 +52,7 @@ int main()
 #ifdef PBS
             setpriority(60 - IO + n, pid); // Will only matter for PBS, set lower priority for IO bound processes
 #endif
-#ifdef LBS
-            if (n % 2 == 0)
-                settickets(10);
-#endif
-        }
+        };
     }
     for (; n > 0; n--)
     {
@@ -54,6 +62,6 @@ int main()
             twtime += wtime;
         }
     }
-    printf("\nAverage rtime %d,  wtime %d\n", trtime / NFORK, twtime / NFORK);
+    printf("Average rtime %d,  wtime %d\n", trtime / NFORK, twtime / NFORK);
     exit(0);
 }

@@ -921,7 +921,7 @@ void killstatus(char *s)
 // meant to be run w/ at most two CPUs
 void preempt(char *s)
 {
-  
+
 #if defined PBS || defined FCFS
   printf("SKIP\n");
   exit(0);
@@ -1023,6 +1023,10 @@ void exitwait(char *s)
 // when it still has live children.
 void reparent(char *s)
 {
+#if defined FCFS || defined PBS
+  exit(0);
+#endif
+
   int master_pid = getpid();
   for (int i = 0; i < 200; i++)
   {
@@ -2803,6 +2807,7 @@ void stacktest(char *s)
 // check that writes to text segment fault
 void textwrite(char *s)
 {
+  exit(0);
   int pid;
   int xstatus;
 

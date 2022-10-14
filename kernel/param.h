@@ -12,4 +12,4 @@
 #define FSSIZE 2000               // size of file system in blocks
 #define MAXPATH 128               // maximum file path name
 #define NMLFQ 5
-#define AGETICK 128
+#define AGETICK 30
