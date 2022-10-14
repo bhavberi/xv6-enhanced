@@ -755,19 +755,17 @@ void scheduler(void)
       {
         if (p->in_queue)
         {
-          delete (&mlfq[p->level], p->pid);
+          delete(&mlfq[p->level], p->pid);
           p->in_queue = 0;
         }
-        if (p->level != 0)
-        {
+        if (p->level)
           p->level--;
-        }
         p->enter_ticks = ticks;
       }
     }
     for (p = proc; p < &proc[NPROC]; p++)
     {
-      if (p->state == RUNNABLE && p->in_queue == 0)
+      if (p->state == RUNNABLE && !p->in_queue)
       {
         pushback(&mlfq[p->level], p);
         p->in_queue = 1;
@@ -788,10 +786,8 @@ void scheduler(void)
           break;
         }
       }
-      if (flag == 1)
-      {
+      if (flag)
         break;
-      }
     }
     if (p->state == RUNNABLE)
     {
