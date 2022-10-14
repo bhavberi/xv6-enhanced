@@ -680,11 +680,6 @@ void scheduler(void)
       acquire(&p->lock);
       if (p->state == RUNNABLE)
       {
-        if (next_process == 0)
-        {
-          next_process = p;
-          continue;
-        }
         uint niceness;
         if (p->reset_niceness == 1)
         {
@@ -692,48 +687,53 @@ void scheduler(void)
         }
         else
         {
-          niceness = (p->sleeping_ticks / (p->sleeping_ticks + p->running_ticks)) * 10;
+          niceness = (uint)(p->sleeping_ticks / (p->sleeping_ticks + p->running_ticks)) * 10;
         }
         uint dynamic_priority = p->static_priority - niceness + 5;
-        dynamic_priority = dynamic_priority > 0 ? dynamic_priority : 0;
-        dynamic_priority = dynamic_priority < 100 ? dynamic_priority : 100;
+        dynamic_priority = dynamic_priority > 0 ? (dynamic_priority < 100 ? dynamic_priority : 100) : 0;
         p->reset_niceness = 0;
         p->sleeping_ticks = 0;
         p->running_ticks = 0;
+        if (next_process == 0)
+        {
+          min = dynamic_priority;
+          next_process = p;
+          continue;
+        }
         if (dynamic_priority < min)
         {
+          release(&next_process->lock);
           next_process = p;
           min = dynamic_priority;
+          continue;
         }
         else if (dynamic_priority == min)
         {
           if (p->number_of_times_scheduled < next_process->number_of_times_scheduled)
           {
+            release(&next_process->lock);
             next_process = p;
+            continue;
           }
           else if (p->number_of_times_scheduled == next_process->number_of_times_scheduled)
           {
             if (p->ctime < next_process->ctime)
             {
+              release(&next_process->lock);
               next_process = p;
+              continue;
             }
           }
         }
       }
-    }
-    for (p = proc; p < &proc[NPROC]; p++)
-    {
-      if (p != next_process)
-      {
-        release(&p->lock);
-      }
+      release(&p->lock);
     }
     p = next_process;
     if (next_process != 0)
     {
-      p->number_of_times_scheduled++;
       if (p->state == RUNNABLE)
       {
+        p->number_of_times_scheduled++;
         // Switch to chosen process.  It is the process's job
         // to release its lock and then reacquire it
         // before jumping back to us.
@@ -1045,7 +1045,7 @@ void procdump(void)
       state = states[p->state];
     else
       state = "???";
-    printf("%d %s %s ctime=%d tickets=%d static_prior=%d", p->pid, state, p->name, p->ctime, p->tickets,p->static_priority);
+    printf("%d %s %s ctime=%d tickets=%d static_prior=%d", p->pid, state, p->name, p->ctime, p->tickets, p->static_priority);
     printf("\n");
   }
 }
