@@ -51,23 +51,23 @@ This assignment was developed and tested in - Ansi C Language.
 
 ## Round Robin (RR) `[CPUS=2]`
 
-![RR - schedulertest](Images/RR.png) ![RR - schedulertest1](Images/RR1.jpeg)
+![RR - schedulertest](images/RR.png) ![RR - schedulertest1](images/RR1.jpeg)
 
 ## First Come First Serve (FCFS) `[CPUS=2]`
 
-![FCFS - schedulertest](Images/FCFS.png) ![FCFS - schedulertest1](Images/FCFS1.jpeg)
+![FCFS - schedulertest](images/FCFS.png) ![FCFS - schedulertest1](images/FCFS1.jpeg)
 
 ## Lotery Based Scheduling (LBS) `[CPUS=2]`
 
-![LBS - schedulertest](Images/LBS.png) ![LBS - schedulertest1](Images/LBS1.jpeg)
+![LBS - schedulertest](images/LBS.png) ![LBS - schedulertest1](images/LBS1.jpeg)
 
 ## Priority Based Scheduling (PBS) `[CPUS=2]`
 
-![PBS - schedulertest](Images/PBS.png) ![PBS - schedulertest1](Images/PBS1.jpeg)
+![PBS - schedulertest](images/PBS.png) ![PBS - schedulertest1](images/PBS1.jpeg)
 
 ## Multi Level Feedback Queue (MLFQ) `[CPUS=1]`
 
-![MLFQ - schedulertest](Images/MLFQ.png) ![MLFQ - schedulertest1](Images/MLFQ1.jpeg)
+![MLFQ - schedulertest](images/MLFQ.png) ![MLFQ - schedulertest1](images/MLFQ1.jpeg)
 -----
 
 ## Scheduling Analysis
@@ -95,6 +95,6 @@ This assignment was developed and tested in - Ansi C Language.
 [Data File](graph/schedulertest-50.txt.png) - [Image](graph/schedulertest-50.txt.png)
 
 ## `schedulertest1` (`AGETICKS`=`50`)
-![Image](graph/schedulertest1-50.txt.png)
+![Image](./graph/schedulertest1-50.txt.png)
 
-[Data File](graph/schedulertest1-50.txt.png) - [Image](graph/schedulertest1-50.txt.png)
+[Data File](./graph/schedulertest1-50.txt.png) - [Image](./graph/schedulertest1-50.txt.png)
