@@ -755,7 +755,7 @@ void scheduler(void)
       {
         if (p->in_queue)
         {
-          delete(&mlfq[p->level], p->pid);
+          delete (&mlfq[p->level], p->pid);
           p->in_queue = 0;
         }
         if (p->level)
@@ -791,6 +791,20 @@ void scheduler(void)
     }
     if (p->state == RUNNABLE)
     {
+      //  --------
+      //  FOR GRAPHING
+      // for (int level = 0; level < NMLFQ; level++)
+      // {
+      //   printf("%d %d ",ticks, level);
+      //   for (int z = 0; z < mlfq[level].end; z++)
+      //   {
+      //     printf("%d ", (mlfq[level].n)[z]->pid);
+      //   }
+      //   printf("\n");
+      // }
+      // printf("\n");
+      // --------
+
       // Switch to chosen process.  It is the process's job
       // to release its lock and then reacquire it
       // before jumping back to us.

@@ -178,6 +178,8 @@ QEMUOPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 
 qemu: $K/kernel fs.img
 	@$(QEMU) $(QEMUOPTS)
+	# FOR GRAPHING
+	# @$(QEMU) $(QEMUOPTS) > output.txt
 
 .gdbinit: .gdbinit.tmpl-riscv
 	sed "s/:1234/:$(GDBPORT)/" < $^ > $@
