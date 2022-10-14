@@ -68,6 +68,12 @@ void usertrap(void)
   {
     // ok
   }
+  else if (r_scause() == 15)
+  {
+    int r = pgfault(r_stval(), p->pagetable);
+    if (r)
+      p->killed = 1;
+  }
   else
   {
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
@@ -263,4 +269,55 @@ int devintr()
   {
     return 0;
   }
+}
+
+// -1 means cannot alloc mem
+// -2 means the address is invalid
+// 0 means ok
+int pgfault(uint64 va, pagetable_t pagetable)
+{
+  struct proc *p = myproc();
+  if (va >= MAXVA || (va >= PGROUNDDOWN(p->trapframe->sp) - PGSIZE && va <= PGROUNDDOWN(p->trapframe->sp)))
+  {
+    return -2;
+  }
+  va = PGROUNDDOWN(va);
+  pte_t *pte = walk(pagetable, va, 0);
+  if (pte == 0)
+    return -1;
+  
+  uint64 pa = PTE2PA(*pte);
+  if (pa == 0)
+  {
+    return -1;
+  }
+  uint flags = PTE_FLAGS(*pte);
+  if (flags & PTE_C)
+  {
+    flags = (flags | PTE_W) & (~PTE_C);
+    char *mem = kalloc();
+    if (mem == 0)
+      return -1;
+    
+    memmove(mem, (void *)pa, PGSIZE);
+    // uvmunmap(p->pagetable, va, PGSIZE, 0);
+
+    *pte = PA2PTE(mem) | flags;
+    // if (mappages(p->pagetable, va, PGSIZE, (uint64)mem, PTE_R | PTE_W | PTE_X | PTE_U) != 0)
+    // {
+    //   printf("Mapping in r_scause =15 failed\n");
+    //   p->killed = 1;
+    // }
+
+    kfree((void *)pa);
+
+    // if (mappages(p->pagetable, va, PGSIZE, (uint64)mem, flags) != 0)
+    // {
+    //   p->killed = 1;
+    //   printf("sometthing is wrong in mappages in trap.\n");
+    // }
+
+    return 0;
+  }
+  return 0;
 }

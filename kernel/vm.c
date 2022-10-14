@@ -303,6 +303,48 @@ void uvmfree(pagetable_t pagetable, uint64 sz)
   freewalk(pagetable);
 }
 
+int uvmcowpy(pagetable_t old, pagetable_t new, uint64 sz)
+{
+  pte_t *pte;
+  uint64 pa, i;
+  uint flags;
+
+  for (i = 0; i < sz; i += PGSIZE)
+  {
+    if ((pte = walk(old, i, 0)) == 0)
+      panic("uvmcopy: pte should exist");
+    if ((*pte & PTE_V) == 0)
+      panic("uvmcopy: page not present");
+    pa = PTE2PA(*pte);
+    flags = PTE_FLAGS(*pte);
+    if (flags & PTE_W)
+    {
+      flags = (flags & (~PTE_W)) | PTE_C;
+      *pte = PA2PTE(pa) | flags;
+    }
+    // if ((mem = kalloc()) == 0)
+    //   goto err;
+    // memmove(mem, (char *)pa, PGSIZE);
+    if (mappages(new, i, PGSIZE, (uint64)pa, flags) != 0)
+    {
+      // kfree(mem);
+      goto err;
+    }
+
+    increase_pgreference((void *)pa);
+    // uvmunmap(old, i, PGSIZE, 0);
+    // if (mappages(old, i, PGSIZE, pa, flags) != 0)
+    // {
+    //   goto err;
+    // }
+  }
+  return 0;
+
+err:
+  uvmunmap(new, 0, i / PGSIZE, 1);
+  return -1;
+}
+
 // Given a parent process's page table, copy
 // its memory into a child's page table.
 // Copies both the page table and the
@@ -311,6 +353,11 @@ void uvmfree(pagetable_t pagetable, uint64 sz)
 // frees any allocated pages on failure.
 int uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
 {
+
+#ifndef NOCOW
+  return uvmcowpy(old, new, sz);
+#endif
+
   pte_t *pte;
   uint64 pa, i;
   uint flags;
@@ -365,6 +412,17 @@ int copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
     pa0 = walkaddr(pagetable, va0);
     if (pa0 == 0)
       return -1;
+
+    // Using same schema as pgfault
+    if (PTE_FLAGS(*(walk(pagetable, va0, 0))) & PTE_C)
+    {
+      pgfault(va0, pagetable);
+      pa0 = walkaddr(pagetable, va0);
+    }
+
+    if (pa0 == 0)
+      return -1;
+
     n = PGSIZE - (dstva - va0);
     if (n > len)
       n = len;

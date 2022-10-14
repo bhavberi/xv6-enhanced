@@ -25,7 +25,10 @@ int main()
             setpriority(60 - IO + n, pid); // Will only matter for PBS, set lower priority for IO bound processes
 #endif
         if (pid < 0)
+        {
+            printf("ERR %d\n",n);
             break;
+        }
         if (pid == 0)
         {
             if (n < IO)
