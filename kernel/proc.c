@@ -7,6 +7,7 @@
 #include "defs.h"
 #include "rand.h"
 #include <stddef.h>
+deque mlfq[NMLFQ];
 
 struct cpu cpus[NCPU];
 
@@ -141,12 +142,6 @@ found:
   p->change_queue = 1 << p->level;
   p->in_queue = 0;
   p->enter_ticks = ticks;
-  p->n_run = 0;
-
-  for (int i = 0; i < NMLFQ; i++)
-  {
-    p->q[i] = 0;
-  }
 
   p->now_ticks = 0;
   p->sigalarm_status = 0;
@@ -583,7 +578,7 @@ void scheduler(void)
     intr_on();
 
 #if defined FCFS
-    struct proc *next_process = NULL;
+    struct proc *next_process = 0;
 
     for (p = proc; p < &proc[NPROC]; p++)
     {
@@ -593,36 +588,37 @@ void scheduler(void)
         next_process = p;
         break;
       }
-      release(&p->lock);
     }
     for (p++; p < &proc[NPROC]; p++)
     {
       acquire(&p->lock);
       if (p->state == RUNNABLE && next_process->ctime > p->ctime)
       {
-        release(&next_process->lock);
         next_process = p;
         continue;
       }
-      release(&p->lock);
+    }
+    for (p = proc; p < &proc[NPROC]; p++)
+    {
+      if (p != next_process)
+      {
+        release(&p->lock);
+      }
     }
     p = next_process;
     if (next_process != 0)
     {
       // printf("%d ", p->pid);
-      if (p->state == RUNNABLE)
-      {
-        // printf("%d\n", p->pid);
-        // Switch to chosen process.  It is the process's job
-        // to release its lock and then reacquire it
-        // before jumping back to us.
-        p->state = RUNNING;
-        c->proc = p;
-        swtch(&c->context, &p->context);
-        // Process is done running for now.
-        // It should have changed its p->state before coming back.
-        c->proc = 0;
-      }
+      // printf("%d\n", p->pid);
+      // Switch to chosen process.  It is the process's job
+      // to release its lock and then reacquire it
+      // before jumping back to us.
+      p->state = RUNNING;
+      c->proc = p;
+      swtch(&c->context, &p->context);
+      // Process is done running for now.
+      // It should have changed its p->state before coming back.
+      c->proc = 0;
       release(&p->lock);
     }
 #elif defined LBS
@@ -684,11 +680,6 @@ void scheduler(void)
       acquire(&p->lock);
       if (p->state == RUNNABLE)
       {
-        if (next_process == 0)
-        {
-          next_process = p;
-          continue;
-        }
         uint niceness;
         if (p->reset_niceness == 1)
         {
@@ -696,48 +687,53 @@ void scheduler(void)
         }
         else
         {
-          niceness = int(p->sleeping_ticks / (p->sleeping_ticks + p->running_ticks)) * 10;
+          niceness = (uint)(p->sleeping_ticks / (p->sleeping_ticks + p->running_ticks)) * 10;
         }
         uint dynamic_priority = p->static_priority - niceness + 5;
-        dynamic_priority = dynamic_priority > 0 ? dynamic_priority : 0;
-        dynamic_priority = dynamic_priority < 100 ? dynamic_priority : 100;
+        dynamic_priority = dynamic_priority > 0 ? (dynamic_priority < 100 ? dynamic_priority : 100) : 0;
         p->reset_niceness = 0;
         p->sleeping_ticks = 0;
         p->running_ticks = 0;
+        if (next_process == 0)
+        {
+          min = dynamic_priority;
+          next_process = p;
+          continue;
+        }
         if (dynamic_priority < min)
         {
+          release(&next_process->lock);
           next_process = p;
           min = dynamic_priority;
+          continue;
         }
         else if (dynamic_priority == min)
         {
           if (p->number_of_times_scheduled < next_process->number_of_times_scheduled)
           {
+            release(&next_process->lock);
             next_process = p;
+            continue;
           }
           else if (p->number_of_times_scheduled == next_process->number_of_times_scheduled)
           {
-            if (p->creation_time < next_process->creation_time)
+            if (p->ctime < next_process->ctime)
             {
+              release(&next_process->lock);
               next_process = p;
+              continue;
             }
           }
         }
       }
-    }
-    for (p = proc; p < &proc[NPROC]; p++)
-    {
-      if (p != next_process)
-      {
-        release(&p->lock);
-      }
+      release(&p->lock);
     }
     p = next_process;
-    p->number_of_times_scheduled++;
     if (next_process != 0)
     {
       if (p->state == RUNNABLE)
       {
+        p->number_of_times_scheduled++;
         // Switch to chosen process.  It is the process's job
         // to release its lock and then reacquire it
         // before jumping back to us.
@@ -748,73 +744,73 @@ void scheduler(void)
         // Process is done running for now.
         // It should have changed its p->state before coming back.
         c->proc = 0;
+        release(&p->lock);
       }
-      release(&p->lock);
     }
 
 #elif defined MLFQ
-    // for (struct proc *p = proc; p < &proc[NPROC]; p++)
-    // {
-    //   if (p->state == RUNNABLE && ticks - p->enter_ticks >= AGETICK)
-    //   {
-    //     if (p->in_queue)
-    //     {
-    //       // qerase(&mlfq[p->level], p->pid);
-    //     }
-    //     if (p->level != 0)
-    //     {
-    //       p->level--;
-    //     }
-    //     p->enter_ticks = ticks;
-    //   }
-    // }
-    // for (p = proc; p < &proc[NPROC]; p++)
-    // {
-    //   if (p->state == RUNNABLE && p->in_queue == 0)
-    //   {
-    //     deque *x = &mlfq[p->level];
-    //     pushback(&x, p);
-    //     p->in_queue = 1;
-    //   }
-    // }
-    // int flag = 0;
-    // for (int level = 0; level < NMLFQ; level++)
-    // {
-    //   while (size(&mlfq[level]))
-    //   {
-    //     p = front(&mlfq[level]);
-    //     deque *x = &mlfq[p->level];
-    //     popfront(&x);
-    //     p->in_queue = 0;
-    //     if (p->state == RUNNABLE)
-    //     {
-    //       p->enter_ticks = ticks;
-    //       flag = 1;
-    //       break;
-    //     }
-    //   }
-    //   if (flag == 1)
-    //   {
-    //     break;
-    //   }
-    // }
-    // if (p->state == RUNNABLE)
-    // {
-    //   // Switch to chosen process.  It is the process's job
-    //   // to release its lock and then reacquire it
-    //   // before jumping back to us.
-    //   p->change_queue = 1 << p->level;
+    for (struct proc *p = proc; p < &proc[NPROC]; p++)
+    {
+      if (p->state == RUNNABLE && ticks - p->enter_ticks >= AGETICK)
+      {
+        if (p->in_queue)
+        {
+          delete (&mlfq[p->level], p->pid);
+          p->in_queue = 0;
+        }
+        if (p->level != 0)
+        {
+          p->level--;
+        }
+        p->enter_ticks = ticks;
+      }
+    }
+    for (p = proc; p < &proc[NPROC]; p++)
+    {
+      if (p->state == RUNNABLE && p->in_queue == 0)
+      {
+        pushback(&mlfq[p->level], p);
+        p->in_queue = 1;
+      }
+    }
+    int flag = 0;
+    for (int level = 0; level < NMLFQ; level++)
+    {
+      while (size(&mlfq[level]))
+      {
+        p = front(&mlfq[level]);
+        popfront(&mlfq[p->level]);
+        p->in_queue = 0;
+        if (p->state == RUNNABLE)
+        {
+          p->enter_ticks = ticks;
+          flag = 1;
+          break;
+        }
+      }
+      if (flag == 1)
+      {
+        break;
+      }
+    }
+    if (p->state == RUNNABLE)
+    {
+      // Switch to chosen process.  It is the process's job
+      // to release its lock and then reacquire it
+      // before jumping back to us.
+      acquire(&p->lock);
+      p->change_queue = 1 << p->level;
 
-    //   p->state = RUNNING;
-    //   p->enter_ticks = ticks;
-    //   p->n_run++;
-    //   c->proc = p;
-    //   swtch(&c->context, &p->context);
+      p->state = RUNNING;
+      p->enter_ticks = ticks;
+      c->proc = p;
+      swtch(&c->context, &p->context);
 
-    //   // Process is done running for now.
-    //   // It should have changed its p->state before coming back.
-    //   c->proc = 0;
-    // }
+      // Process is done running for now.
+      // It should have changed its p->state before coming back.
+      c->proc = 0;
+      release(&p->lock);
+    }
 #elif defined RR
     for (p = proc; p < &proc[NPROC]; p++)
     {
@@ -1049,7 +1045,7 @@ void procdump(void)
       state = states[p->state];
     else
       state = "???";
-    printf("%d %s %s", p->pid, state, p->name);
+    printf("%d %s %s ctime=%d tickets=%d static_prior=%d", p->pid, state, p->name, p->ctime, p->tickets, p->static_priority);
     printf("\n");
   }
 }
@@ -1064,9 +1060,11 @@ int setpriority(int number, int piid)
       original = p->static_priority;
       p->static_priority = number;
       p->reset_niceness = 1;
+      release(&p->lock);
       if (p->static_priority < original)
       {
-        yield(); // need to call the scheduler again.
+        // printf("%d %d %d\n", p->pid, p->static_priority, original);
+        yield();
       }
       break;
     }

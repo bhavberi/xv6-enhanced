@@ -921,6 +921,12 @@ void killstatus(char *s)
 // meant to be run w/ at most two CPUs
 void preempt(char *s)
 {
+  
+#if defined PBS || defined FCFS
+  printf("SKIP\n");
+  exit(0);
+#endif
+
   int pid1, pid2, pid3;
   int pfds[2];
 

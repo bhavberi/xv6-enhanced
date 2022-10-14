@@ -13,9 +13,16 @@ int main()
     int twtime = 0, trtime = 0;
     for (n = 0; n < NFORK; n++)
     {
+        for (int j = 0; j < 100000000; ++j)
+        {
+        };
         pid = fork();
 #if defined LBS
         settickets(2 * n + 10);
+#endif
+#ifdef PBS
+        if (pid != 0)
+            setpriority(60 - IO + n, pid); // Will only matter for PBS, set lower priority for IO bound processes
 #endif
         if (pid < 0)
             break;
@@ -23,6 +30,9 @@ int main()
         {
             if (n < IO)
             {
+                for (uint64 i = 0; i < 10; i++)
+                {
+                };
                 sleep(200); // IO bound processes
             }
             else
@@ -39,7 +49,7 @@ int main()
 #ifdef PBS
             setpriority(60 - IO + n, pid); // Will only matter for PBS, set lower priority for IO bound processes
 #endif
-        }
+        };
     }
     for (; n > 0; n--)
     {
