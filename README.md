@@ -5,8 +5,11 @@
 ### Harshit Aggarwal (2021111015)
 
 ### Bhav Beri (2021111013)
+---
 
 This assignment was developed and tested in - Ansi C Language.
+
+The codebase is a updated version of ***[MIT xv6-riscv](https://github.com/mit-pdos/xv6-riscv)*** and is a record of work done by the above mentioned [Team](#team-members) in partial fulfillment of the requirements for the course `Operating Systems and Networks` (`CS3.301`) in the session `Monsoon 2022-23`, under the faculty [`Krishna Reddy Polepalli`](https://faculty.iiit.ac.in/~pkreddy/).
 
 ----
 
@@ -57,7 +60,7 @@ This assignment was developed and tested in - Ansi C Language.
 
 ![FCFS - schedulertest](images/FCFS.png) ![FCFS - schedulertest1](images/FCFS1.jpeg)
 
-## Lotery Based Scheduling (LBS) `[CPUS=2]`
+## Lotery Based Scheduling (LBS) `[CPUS=1]`
 
 ![LBS - schedulertest](images/LBS.png) ![LBS - schedulertest1](images/LBS1.jpeg)
 
@@ -82,19 +85,34 @@ This assignment was developed and tested in - Ansi C Language.
 ## `schedulertest` (`AGETICKS`=`30`)
 ![Image](graph/schedulertest.txt.png)
 
-[Data File](graph/schedulertest.txt.png) - [Image](graph/schedulertest.txt.png)
+[Data File](graph/schedulertest.txt) <-> [Image](graph/schedulertest.txt.png)
 
 ## `schedulertest1` (`AGETICKS`=`30`)
 ![Image](graph/schedulertest1.txt.png)
 
-[Data File](graph/schedulertest1.txt.png) - [Image](graph/schedulertest1.txt.png)
+[Data File](graph/schedulertest1.txt) <-> [Image](graph/schedulertest1.txt.png)
 
 ## `schedulertest` (`AGETICKS`=`50`)
 ![Image](graph/schedulertest-50.txt.png)
 
-[Data File](graph/schedulertest-50.txt.png) - [Image](graph/schedulertest-50.txt.png)
+[Data File](graph/schedulertest-50.txt) <-> [Image](graph/schedulertest-50.txt.png)
 
 ## `schedulertest1` (`AGETICKS`=`50`)
 ![Image](./graph/schedulertest1-50.txt.png)
 
-[Data File](./graph/schedulertest1-50.txt.png) - [Image](./graph/schedulertest1-50.txt.png)
+[Data File](./graph/schedulertest1-50.txt) <-> [Image](./graph/schedulertest1-50.txt.png)
+
+----
+
+### A few of the commands used while development (For reference)
+
+- `make qemu CPUS=2` OR `make qemu SCHEDULER=RR CPUS=2`
+- `make qemu SCHEDULER=FCFS CPUS=2`
+- `make qemu SCHEDULER=LBS CPUS=1` OR `make qemu SCHEDULER=LBS`
+- `make qemu SCHEDULER=PBS CPUS=2`
+- `make qemu SCHEDULER=MLFQ CPUS=1`
+- `make clean`
+
+### Default Values for some of the Macros
+- `SCHEDULER` => `RR`
+- `CPUS` => `1`
